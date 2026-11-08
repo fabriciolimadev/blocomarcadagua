@@ -1,0 +1,21 @@
+@import url("../styles/editor.css");
+
+:root{--page:#f5f6fa;--surface:#fff;--ink:#252535;--muted:#747582;--line:#e9e9f0;--accent:#6854d9;--accent-hover:#5742c2;--accent-soft:#efecfb;--track:#e9e6f4;--green:#317761;--radius:16px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:"Manrope Variable",sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit}
+button,a,input,select{-webkit-tap-highlight-color:transparent}
+button{cursor:pointer;touch-action:manipulation}
+button:disabled{cursor:not-allowed}
+button{transition:background .16s ease,color .16s ease,border-color .16s ease,box-shadow .16s ease}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9c8ce7;outline-offset:4px}
+button:disabled{opacity:.55}
+button svg{flex-shrink:0}
+a{color:inherit;text-decoration:none}
+h1,h2,p{margin:0}
+h2{font-size:15px;font-weight:750;letter-spacing:-.3px}
+button{border:0}
+.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.spin{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important;scroll-behavior:auto!important}}
