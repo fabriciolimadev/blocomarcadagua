@@ -1,4 +1,5 @@
 @import url("../styles/editor.css");
+@import url("../styles/instagram.css");
 
 :root{--page:#f5f6fa;--surface:#fff;--ink:#252535;--muted:#747582;--line:#e9e9f0;--accent:#6854d9;--accent-hover:#5742c2;--accent-soft:#efecfb;--track:#e9e6f4;--green:#317761;--radius:16px}
 *{box-sizing:border-box}

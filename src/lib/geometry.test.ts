@@ -1,48 +1,47 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  calculateWatermarkPlacement,
-  findAlphaBounds,
-  getImageSizeError,
-} from "./geometry";
+import { calculateCoverCrop, getImageSizeError } from "./geometry";
 
-test("positions the mark at bottom left using photo width and short-side margin", () => {
-  const box = calculateWatermarkPlacement(4000, 3000, 2000, 200, { size: 28, margin: 3 });
-  assert.equal(box.x, 90);
-  assert.equal(box.y, 2798);
-  assert.equal(box.width, 1120);
-  assert.ok(Math.abs(box.height - 112) < 0.000001);
+test("center-crops a landscape photo to the portrait output without distortion", () => {
+  assert.deepEqual(calculateCoverCrop(6000, 4000, 1080, 1350), { x: 1400, y: 0, width: 3200, height: 4000 });
 });
 
-test("fits a tall mark inside a panoramic photo while preserving its ratio", () => {
-  const box = calculateWatermarkPlacement(4000, 300, 200, 800, { size: 80, margin: 5 });
-  assert.deepEqual(box, { x: 15, y: 15, width: 67.5, height: 270 });
+test("center-crops a tall portrait and leaves a matching 4:5 photo intact", () => {
+  assert.deepEqual(calculateCoverCrop(2000, 4000, 1080, 1350), { x: 0, y: 750, width: 2000, height: 2500 });
+  assert.deepEqual(calculateCoverCrop(1600, 2000, 1080, 1350), { x: 0, y: 0, width: 1600, height: 2000 });
 });
 
-test("keeps a positive inset and contains the mark even with extreme settings", () => {
-  const box = calculateWatermarkPlacement(100, 100, 200, 20, { size: 1000, margin: -5 });
-  assert.ok(box.x > 0);
-  assert.ok(box.x + box.width < 100);
-  assert.ok(box.y + box.height < 100);
-  assert.equal(box.width / box.height, 10);
+test("moves the source crop to the chosen edges without exposing blank space", () => {
+  assert.deepEqual(calculateCoverCrop(6000, 4000, 1080, 1350, { x: 100, y: 0, zoom: 1 }), { x: 2800, y: 0, width: 3200, height: 4000 });
+  assert.deepEqual(calculateCoverCrop(2000, 4000, 1080, 1350, { x: 0, y: 100, zoom: 1 }), { x: 0, y: 1500, width: 2000, height: 2500 });
 });
 
-test("rejects non-finite dimensions instead of returning invalid coordinates", () => {
-  assert.throws(() => calculateWatermarkPlacement(0, 300, 200, 20, { size: 28, margin: 3 }));
-  assert.throws(() => calculateWatermarkPlacement(100, NaN, 200, 20, { size: 28, margin: 3 }));
+test("zoom narrows the crop and permits positioning on both axes", () => {
+  assert.deepEqual(calculateCoverCrop(6000, 4000, 1080, 1350, { x: 50, y: 50, zoom: 2 }), { x: 2200, y: 1000, width: 1600, height: 2000 });
+  assert.deepEqual(calculateCoverCrop(6000, 4000, 1080, 1350, { x: 0, y: 100, zoom: 2 }), { x: 0, y: 2000, width: 1600, height: 2000 });
 });
 
-test("trims only transparent padding and includes faint alpha artwork", () => {
-  const rgba = new Uint8ClampedArray(5 * 4 * 4);
-  rgba[(1 * 5 + 1) * 4 + 3] = 255;
-  rgba[(2 * 5 + 3) * 4 + 3] = 1;
-  assert.deepEqual(findAlphaBounds(rgba, 5, 4), { x: 1, y: 1, width: 3, height: 2 });
-  assert.equal(findAlphaBounds(new Uint8ClampedArray(8), 2, 1), null);
+test("clamps invalid framing and retains a finite in-bounds 4:5 crop", () => {
+  assert.deepEqual(calculateCoverCrop(6000, 4000, 1080, 1350, { x: NaN, y: Infinity, zoom: NaN }), { x: 1400, y: 0, width: 3200, height: 4000 });
+  assert.deepEqual(calculateCoverCrop(6000, 4000, 1080, 1350, { x: -50, y: 500, zoom: 0 }), { x: 0, y: 0, width: 3200, height: 4000 });
+  const crop = calculateCoverCrop(6000, 4000, 1080, 1350, { x: 100, y: 100, zoom: 100 });
+  assert.ok(Math.abs(crop.width - 3200 / 3) < 0.000001);
+  assert.ok(Math.abs(crop.height - 4000 / 3) < 0.000001);
+  assert.ok(crop.x >= 0 && crop.y >= 0);
+  assert.ok(crop.x + crop.width <= 6000 && crop.y + crop.height <= 4000);
+  assert.ok(Math.abs(crop.width / crop.height - 4 / 5) < 0.000001);
 });
 
-test("accepts ordinary photos and rejects unsupported export canvas sizes", () => {
+test("rejects invalid source and target dimensions", () => {
+  assert.throws(() => calculateCoverCrop(0, 300, 1080, 1350), /dimensões/);
+  assert.throws(() => calculateCoverCrop(300, NaN, 1080, 1350), /dimensões/);
+  assert.throws(() => calculateCoverCrop(300, 300, 0, 1350), /dimensões/);
+  assert.throws(() => calculateCoverCrop(300, 300, 1080, Infinity), /dimensões/);
+});
+
+test("accepts ordinary photos and rejects unsupported source image sizes", () => {
   assert.equal(getImageSizeError(4000, 3000), null);
-  assert.equal(getImageSizeError(4000, 4000), null);
+  assert.equal(getImageSizeError(4096, 4096), null);
   assert.match(getImageSizeError(5000, 4000) ?? "", /16 megapixels/);
   assert.match(getImageSizeError(9000, 1000) ?? "", /8192/);
   assert.match(getImageSizeError(0, 1000) ?? "", /dimensões/i);

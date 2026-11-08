@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Assina | Sua marca em cada foto",
-  description: "Adicione a assinatura AE Carvalho às suas fotos, ajuste a marca d’água e baixe tudo em ZIP. Simples, privado e direto no seu aparelho.",
+  description: "Enquadre suas fotos para o Instagram, aplique a vinheta AE Carvalho e compartilhe pelo celular ou baixe em ZIP. Edição no seu aparelho.",
   applicationName: "Assina",
 };
 

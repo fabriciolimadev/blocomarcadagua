@@ -16,7 +16,8 @@ export default defineConfig({
     navigationTimeout: 60_000,
   },
   projects: [
-    { name: "desktop", use: { viewport: { width: 1440, height: 1000 } } },
-    { name: "mobile", use: { viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 } },
+    { name: "desktop", grepInvert: /tablet layout/, use: { viewport: { width: 1440, height: 1000 } } },
+    { name: "mobile", grepInvert: /tablet layout/, use: { viewport: { width: 375, height: 812 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1 } },
+    { name: "tablet", grep: /tablet layout/, use: { viewport: { width: 768, height: 1024 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1, reducedMotion: "reduce" } },
   ],
 });

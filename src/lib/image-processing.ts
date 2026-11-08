@@ -1,21 +1,23 @@
-import { calculateWatermarkPlacement, findAlphaBounds, getImageSizeError } from "./geometry";
+import { calculateCoverCrop, DEFAULT_FRAMING, getImageSizeError, INSTAGRAM_HEIGHT, INSTAGRAM_WIDTH, type PhotoFraming } from "./geometry";
+
+export { DEFAULT_FRAMING, INSTAGRAM_HEIGHT, INSTAGRAM_WIDTH, type PhotoFraming } from "./geometry";
 
 export type WatermarkSettings = {
-  size: number;
-  margin: number;
   opacity: number;
   format: "image/jpeg" | "image/png";
 };
 
 export const DEFAULT_SETTINGS: WatermarkSettings = {
-  size: 28,
-  margin: 3,
   opacity: 100,
   format: "image/jpeg",
 };
 
-export const WATERMARK_SOURCE = "/watermark.png";
+export const WATERMARK_SOURCE = "/instagram-template.png";
 export const MAX_PHOTO_BYTES = 30 * 1024 * 1024;
+
+export function normalizeOpacity(opacity: number): number {
+  return Math.min(100, Math.max(0, Number.isFinite(opacity) ? opacity : 100)) / 100;
+}
 
 export function validatePhoto(file: File): string | null {
   if (file.size === 0) return "Este arquivo está vazio. Escolha outra foto.";
@@ -111,7 +113,7 @@ function canvasBlob(canvas: HTMLCanvasElement, format: string, quality?: number)
 
 let watermarkPromise: Promise<HTMLCanvasElement> | undefined;
 
-/** Shared cropped artwork for both the preview and the full-resolution export. */
+/** The supplied full-frame RGBA template, including its vignette and baked-in logo. */
 export function getWatermark(): Promise<HTMLCanvasElement> {
   if (!watermarkPromise) {
     watermarkPromise = (async () => {
@@ -122,15 +124,12 @@ export function getWatermark(): Promise<HTMLCanvasElement> {
       try {
         const context = context2d(original);
         context.drawImage(decoded.source, 0, 0);
-        const pixels = context.getImageData(0, 0, original.width, original.height);
-        const bounds = findAlphaBounds(pixels.data, original.width, original.height);
-        if (!bounds) throw new Error("A assinatura está vazia. Verifique o arquivo de marca d’água.");
-        const cropped = createCanvas(bounds.width, bounds.height);
-        context2d(cropped).drawImage(original, bounds.x, bounds.y, bounds.width, bounds.height, 0, 0, bounds.width, bounds.height);
-        return cropped;
+        return original;
+      } catch (error) {
+        releaseCanvas(original);
+        throw error;
       } finally {
         decoded.close();
-        releaseCanvas(original);
       }
     })().catch((error) => {
       watermarkPromise = undefined;
@@ -159,7 +158,11 @@ export async function createThumbnail(file: File): Promise<{ url: string; width:
   }
 }
 
-export async function processPhoto(file: File, settings: WatermarkSettings): Promise<{ blob: Blob; width: number; height: number }> {
+export async function processPhoto(
+  file: File,
+  settings: WatermarkSettings,
+  framing: PhotoFraming = DEFAULT_FRAMING,
+): Promise<{ blob: Blob; width: number; height: number }> {
   const validation = validatePhoto(file);
   if (validation) throw new Error(validation);
   const watermark = await getWatermark();
@@ -168,18 +171,18 @@ export async function processPhoto(file: File, settings: WatermarkSettings): Pro
   try {
     const sizeError = getImageSizeError(decoded.width, decoded.height);
     if (sizeError) throw new Error(sizeError);
-    canvas = createCanvas(decoded.width, decoded.height);
+    canvas = createCanvas(INSTAGRAM_WIDTH, INSTAGRAM_HEIGHT);
     const context = context2d(canvas);
     if (settings.format === "image/jpeg") {
       context.fillStyle = "#fff";
       context.fillRect(0, 0, canvas.width, canvas.height);
     }
-    context.drawImage(decoded.source, 0, 0);
-    const placement = calculateWatermarkPlacement(decoded.width, decoded.height, watermark.width, watermark.height, settings);
-    context.globalAlpha = Math.min(100, Math.max(0, Number.isFinite(settings.opacity) ? settings.opacity : 100)) / 100;
-    context.drawImage(watermark, placement.x, placement.y, placement.width, placement.height);
+    const crop = calculateCoverCrop(decoded.width, decoded.height, INSTAGRAM_WIDTH, INSTAGRAM_HEIGHT, framing);
+    context.drawImage(decoded.source, crop.x, crop.y, crop.width, crop.height, 0, 0, INSTAGRAM_WIDTH, INSTAGRAM_HEIGHT);
+    context.globalAlpha = normalizeOpacity(settings.opacity);
+    context.drawImage(watermark, 0, 0, INSTAGRAM_WIDTH, INSTAGRAM_HEIGHT);
     const blob = await canvasBlob(canvas, settings.format, 0.95);
-    return { blob, width: decoded.width, height: decoded.height };
+    return { blob, width: INSTAGRAM_WIDTH, height: INSTAGRAM_HEIGHT };
   } finally {
     decoded.close();
     if (canvas) releaseCanvas(canvas);

@@ -1,0 +1,11 @@
+.npm-cache
+.next
+node_modules
+out
+test-results
+playwright-report
+.playwright
+docs
+tests
+*.tsbuildinfo
+.env*

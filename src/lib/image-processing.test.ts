@@ -1,6 +1,23 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createPhotoZip, outputFileName, validatePhoto } from "./image-processing";
+import { createPhotoZip, DEFAULT_FRAMING, DEFAULT_SETTINGS, INSTAGRAM_HEIGHT, INSTAGRAM_WIDTH, normalizeOpacity, outputFileName, validatePhoto, WATERMARK_SOURCE } from "./image-processing";
+
+test("uses the full supplied Instagram template with an opaque overlay by default", () => {
+  assert.equal(WATERMARK_SOURCE, "/instagram-template.png");
+  assert.deepEqual([INSTAGRAM_WIDTH, INSTAGRAM_HEIGHT], [1080, 1350]);
+  assert.deepEqual(DEFAULT_SETTINGS, { opacity: 100, format: "image/jpeg" });
+  assert.deepEqual(DEFAULT_FRAMING, { x: 50, y: 50, zoom: 1 });
+});
+
+test("normalizes overlay opacity to valid canvas alpha, including invalid input", () => {
+  assert.equal(normalizeOpacity(100), 1);
+  assert.equal(normalizeOpacity(50), 0.5);
+  assert.equal(normalizeOpacity(0), 0);
+  assert.equal(normalizeOpacity(-10), 0);
+  assert.equal(normalizeOpacity(200), 1);
+  assert.equal(normalizeOpacity(NaN), 1);
+  assert.equal(normalizeOpacity(Infinity), 1);
+});
 
 function photo(name: string, type: string, size = 128): File {
   return { name, type, size } as File;
